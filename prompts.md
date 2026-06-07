@@ -74,3 +74,25 @@ Tests assert periodic NOT flagged with comment that M3 adds the scheduling path.
 ## M2 — build prompt
 
 ratified — build it
+
+## M3 — planning prompt (over-invest: confidence + false-positive guard)
+
+M2 accepted. Move to M3 ONLY: three pieces. PIECE 1: DetectionSignal -> real
+Finding (M0 contract), idle + orphan get REAL confidence, no placeholders. PIECE
+2 (highest risk): /findings cutover — delete hardcoded payload, return real
+findings from joined data, exact M0 contract shape, dashboard must not break,
+show live payload. PIECE 3: scheduling-candidate detector — day idle if daily
+mean CPU < 15% (reuse IDLE_MEAN_CPU_THRESHOLD at daily grain, no new threshold);
+idle_ratio = idle_days/total_days; flag when 0.15 <= ratio <= 0.60; NON-
+termination finding conf ~0.4, caveat about scheduled use, NO terminate command.
+Confidence tiers: permanently-idle ~0.9 terminate + waste claimed; scheduling
+~0.4 no terminate waste 0; orphan ~0.3 waste claimed + orphan caveat; active no
+finding. Waste claimed only for high-confidence findings; scheduling = 0/
+unquantified; state window-vs-monthly assumption (14-day fixture). Day-count
+params in config.py. RESEARCH: re-read detect.py + config.py, confirm per-day
+idle count for periodic. Expected: idle->0.9 terminate waste; periodic->0.4 no
+terminate waste0; active->none; orphan->0.3 orphan caveat waste.
+
+## M3 — build prompt
+
+ratified — build it

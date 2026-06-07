@@ -66,14 +66,16 @@ def test_active_instance_not_flagged(client):
     assert sig["basis"] == "active"
 
 
-def test_periodic_instance_not_flagged_by_design(client):
-    # INTENDED: periodic is in use (high overall mean from weekday load), not
-    # permanently idle. M3 introduces its own scheduling-candidate path; M2 must
-    # not flag it here.
+def test_periodic_instance_is_scheduling_candidate(client):
+    # M3 thickened detection: periodic is NOT permanently idle (high overall mean
+    # from weekday load) but its daily idle-ratio (4/14) lands in the scheduling
+    # band -> a NON-termination scheduling candidate. is_idle_candidate stays
+    # False (we are not recommending a kill).
     sig = _by_id(client)["i-0c3period03"]
     assert sig["is_idle_candidate"] is False
-    assert sig["basis"] == "active"
+    assert sig["basis"] == "scheduling-candidate"
     assert sig["overall_mean_cpu"] >= IDLE_MEAN_CPU_THRESHOLD
+    assert sig["idle_ratio"] == pytest.approx(4 / 14)
 
 
 def test_orphan_flagged_via_absence(client):
@@ -81,13 +83,4 @@ def test_orphan_flagged_via_absence(client):
     assert sig["is_idle_candidate"] is True
     assert sig["basis"] == "orphan-no-metrics"
     assert sig["overall_mean_cpu"] is None
-
-
-def test_findings_frozen_at_m0_payload(client):
-    # GET /findings must remain the M0 hardcoded payload, untouched by M2.
-    data = client.get("/findings").json()
-    assert len(data) == 1
-    assert data[0]["resource_id"] == "i-0b2idle002"
-    assert data[0]["proposed_command"] == (
-        "aws ec2 terminate-instances --instance-ids i-0b2idle002"
-    )
+    assert sig["idle_ratio"] is None
