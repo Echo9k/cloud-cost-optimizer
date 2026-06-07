@@ -96,3 +96,23 @@ terminate waste0; active->none; orphan->0.3 orphan caveat waste.
 ## M3 — build prompt
 
 ratified — build it
+
+## M4 — planning prompt (remediation approval + persistence seam)
+
+M3 accepted. Move to M4, plan first, no code until ratified. Findings are
+computed not persisted; approval must survive recomputes. Hard fence: approving
+never executes anything — flips status, surfaces proposed_command as text, human
+runs it. Acceptance: flagged finding emits correct command; new endpoint lets
+human approve; approval flips status new->approved and persists. Constraints:
+(1) persistence seam — small approvals table keyed by resource_id (don't persist
+whole Findings unless justified + reconciled); (2) no execution — approve changes
+status only; (3) finding identity — stable key (resource_id), handle disposition
+change between scans; (4) decide if scheduling-candidate approvable. Verification
+anchor: GET /findings (idle new) -> POST approve -> GET /findings recomputed
+(idle approved, others unaffected). OUT: dashboard wiring, un-approve/reject,
+multi-user/auth, real cloud. config.py stays threshold/tier source; /resources
+and /detections unchanged. Research app/findings.py, orm.py, db.py first.
+
+## M4 — build prompt
+
+ratified — build it.

@@ -19,6 +19,8 @@ _FILES = Path(__file__).resolve().parent.parent / "files"
 
 @pytest.fixture
 def client():
+    # Fresh DB each test so approval rows from other suites don't leak in.
+    Base.metadata.drop_all(bind=engine)
     init_db()
     return TestClient(app)
 
@@ -55,10 +57,7 @@ def test_findings_match_contract_shape(client):
 
 
 def test_findings_empty_before_ingest(client):
-    # Reset the shared on-disk DB so this asserts the genuine no-data state
-    # (other tests in the suite ingest into the same SQLite file).
-    Base.metadata.drop_all(bind=engine)
-    init_db()
+    # client fixture already starts from a fresh DB; no ingest here.
     resp = client.get("/findings")
     assert resp.status_code == 200
     assert resp.json() == []

@@ -54,3 +54,25 @@ class UtilizationSampleRow(Base):
     value: Mapped[float] = mapped_column(Float)
     unit: Mapped[str] = mapped_column(String)
     period_seconds: Mapped[int] = mapped_column(Integer)
+
+
+class ApprovalRow(Base):
+    """A persisted HUMAN DECISION to approve a finding's proposed command.
+
+    The persistence seam (M4): findings are derived and recomputed on every
+    request, but an approval must survive recomputes. We store ONLY the decision,
+    never the derived finding. Keyed by resource_id (one approval per resource).
+
+    `approved_basis` is the reconciliation key: an approval is honored only while
+    the resource's recomputed disposition still matches it, so an approval of a
+    terminate command never rides onto a resource we no longer recommend killing.
+    `approved_command` is kept purely as an audit trail of what was approved.
+    Approving NEVER executes anything.
+    """
+
+    __tablename__ = "approvals"
+
+    resource_id: Mapped[str] = mapped_column(String, primary_key=True)
+    approved_basis: Mapped[str] = mapped_column(String)
+    approved_command: Mapped[str] = mapped_column(String)
+    approved_at: Mapped[datetime] = mapped_column()

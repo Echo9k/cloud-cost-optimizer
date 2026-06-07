@@ -13,11 +13,12 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
+from app.approvals import FindingNotApprovable, FindingNotFound, approve
 from app.db import get_session, init_db
 from app.detect import DetectionSignal, detect
 from app.findings import build_findings
@@ -39,8 +40,33 @@ _DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
 
 @app.get("/findings", response_model=list[Finding])
 def get_findings(session: Session = Depends(get_session)) -> list[Finding]:
-    """Real findings derived from the joined data (M3 cutover from M0 hardcoded)."""
+    """Real findings derived from the joined data, with approval state overlaid."""
     return build_findings(session)
+
+
+@app.post("/findings/{resource_id}/approve", response_model=Finding)
+def approve_finding(
+    resource_id: str, session: Session = Depends(get_session)
+) -> Finding:
+    """Flip a finding's status new -> approved and PERSIST it. Executes nothing.
+
+    Writes a single row to the approvals table; the proposed_command is surfaced
+    as text for the human to run in their own terminal.
+    """
+    try:
+        return approve(session, resource_id)
+    except FindingNotFound:
+        raise HTTPException(
+            status_code=404, detail=f"No current finding for resource '{resource_id}'."
+        )
+    except FindingNotApprovable:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Finding for '{resource_id}' is a scheduling candidate "
+                "(non-termination) and is not approvable."
+            ),
+        )
 
 
 @app.post("/ingest")

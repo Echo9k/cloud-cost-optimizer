@@ -17,6 +17,7 @@ command by design.
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import (
@@ -25,8 +26,9 @@ from app.config import (
     CONFIDENCE_SCHEDULING_CANDIDATE,
     WASTE_PROJECTION_DAYS,
 )
-from app.detect import DetectionSignal, detect_resource
+from app.detect import DetectionBasis, DetectionSignal, detect_resource
 from app.models import Finding
+from app.orm import ApprovalRow
 from app.resources import ResourceView, get_resources
 
 
@@ -111,12 +113,34 @@ def _idle_day_counts(resource: ResourceView) -> tuple[int, int]:
     return idle, len(daily_means)
 
 
-def build_findings(session: Session) -> list[Finding]:
-    """Real findings from joined data, sorted by claimed waste (desc)."""
-    findings: list[Finding] = []
+def build_findings_with_basis(session: Session) -> list[tuple[Finding, DetectionBasis]]:
+    """Compute findings paired with their disposition (basis).
+
+    The basis is needed internally for approval reconciliation but is NOT part of
+    the public Finding contract. Approval state is overlaid here: a finding reads
+    status="approved" iff a stored approval exists for its resource_id AND the
+    stored approved_basis still matches the resource's current basis (the safety
+    guard against an approval riding onto a changed disposition).
+    """
+    approvals = {
+        a.resource_id: a for a in session.execute(select(ApprovalRow)).scalars()
+    }
+
+    pairs: list[tuple[Finding, DetectionBasis]] = []
     for resource in get_resources(session):
-        finding = _finding_for(resource, detect_resource(resource))
-        if finding is not None:
-            findings.append(finding)
-    findings.sort(key=lambda f: f.waste_estimate, reverse=True)
-    return findings
+        signal = detect_resource(resource)
+        finding = _finding_for(resource, signal)
+        if finding is None:
+            continue
+        approval = approvals.get(finding.resource_id)
+        if approval is not None and approval.approved_basis == signal.basis:
+            finding.status = "approved"
+        pairs.append((finding, signal.basis))
+
+    pairs.sort(key=lambda fb: fb[0].waste_estimate, reverse=True)
+    return pairs
+
+
+def build_findings(session: Session) -> list[Finding]:
+    """Real findings from joined data (approval state overlaid), sorted by waste."""
+    return [finding for finding, _ in build_findings_with_basis(session)]
