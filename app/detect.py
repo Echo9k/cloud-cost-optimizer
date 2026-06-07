@@ -52,7 +52,7 @@ class DetectionSignal(BaseModel):
 
 
 def _mean_cpu(resource: ResourceView) -> float:
-    cpu = [p.value for p in resource.utilization if p.metric_name == "CPUUtilization"]
+    cpu = _cpu_samples(resource)
     return sum(cpu) / len(cpu)
 
 
@@ -72,10 +72,17 @@ def _idle_ratio(resource: ResourceView) -> float:
     return idle_days / len(daily_means)
 
 
+def _cpu_samples(resource: ResourceView) -> list[float]:
+    return [p.value for p in resource.utilization if p.metric_name == "CPUUtilization"]
+
+
 def detect_resource(resource: ResourceView) -> DetectionSignal:
     """Classify one joined resource view (M2 idle rule + M3 scheduling rule)."""
-    # C3: orphan branch first — empty series, flagged via absence, never averaged.
-    if not resource.utilization:
+    # C3: orphan branch first. "No CPU signal" covers BOTH an empty series and a
+    # series that carries only non-CPU metrics (e.g. NetworkIn) — either way we
+    # have no utilization signal to judge idle, the most deferential case. (This
+    # also guards _mean_cpu / _idle_ratio against division by zero.)
+    if not _cpu_samples(resource):
         return DetectionSignal(
             resource_id=resource.resource_id,
             resource_type=resource.resource_type,

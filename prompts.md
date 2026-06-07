@@ -138,3 +138,21 @@ Backend untouched, presentation only. Research dashboard/index.html + live
 ## M5 — build prompt
 
 ratified — build it.
+
+## M6 — planning prompt (harden; deck excluded, built separately)
+
+M5 accepted. Move to M6, FINAL code milestone, plan first, no code until
+ratified. DECK not part of M6. Four prioritized deliverables: (1) README RUNS
+FROM ZERO — fresh clone to working dashboard, verify cold, exact command
+sequence, state Python version, synthetic-fixture-only, no AWS creds; (2)
+TEARDOWN STATEMENT — synthetic fixtures, no live cloud, no decommissioning
+needed; (3) ORPHAN PILL SOFTENING — orphan pill to amber, idle stays green/red,
+verify then decommission; (4) EDGE FIXTURES (tradeable) — add edge-case rows,
+state expected behavior, don't change thresholds/logic, surface real bugs.
+Constraints: no backend logic changes except bug fixes; no-execution holds;
+commit+push build branch, report SHA, no main, no PR. Research README + fixtures
++ tests, confirm cold-start gap first.
+
+## M6 — build prompt
+
+ratified — build it

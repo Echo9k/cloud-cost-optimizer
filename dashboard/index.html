@@ -33,6 +33,7 @@
     /* Disposition pill */
     .disp { display: inline-block; font-size: 0.8rem; font-weight: 600; margin: 0.5rem 0; padding: 0.15rem 0.55rem; border-radius: 6px; }
     .disp.action { background: #b3344418; color: #b34; }
+    .disp.verify { background: #b8830022; color: #b88300; }
     .disp.inuse  { background: #2563eb18; color: #2563eb; }
 
     .reason { margin: 0.35rem 0; }
@@ -102,9 +103,17 @@
       const actionable = isActionable(f);
       const approved = f.status === "approved";
 
-      const disp = actionable
-        ? `<div class="disp action">Decommission proposed — turn this off</div>`
-        : `<div class="disp inuse">In use — scheduling opportunity, look closer</div>`;
+      // Among actionable findings, a low-confidence one (the orphan) gets a
+      // SOFTER amber "verify first" pill, while a high-confidence one (idle)
+      // keeps the firm red "turn this off". Least signal = most deferential.
+      let disp;
+      if (!actionable) {
+        disp = `<div class="disp inuse">In use — scheduling opportunity, look closer</div>`;
+      } else if (f.confidence >= 0.7) {
+        disp = `<div class="disp action">Decommission proposed — turn this off</div>`;
+      } else {
+        disp = `<div class="disp verify">Decommission proposed — verify first (orphan or data gap)</div>`;
+      }
 
       let controls;
       if (!actionable) {
