@@ -52,3 +52,25 @@ of scope: any detection/threshold/classification/confidence/weekday logic; GET
 ## M1 — build prompt
 
 ratified — build it
+
+## M2 — planning prompt (corrected design)
+
+M1 accepted. Push build branch freely; ask only before main/PR. Move to M2
+(detection, baseline idle rule), plan first, no code until ratified. RESEARCH:
+re-read app/resources.py + DATA_FORMAT.md; open utilization_sample.csv; state
+rough mean CPU for active/idle/periodic. M2 acceptance: threshold rule flags
+idle, not active; orphan via absence; binary only. CORRECTED DESIGN: M2 detects
+PERMANENTLY IDLE only (flat-low all days -> terminate). PERIODIC/scheduled-use
+is IN USE, NOT a termination candidate -> deferred to M3 as a separate shape
+detector, not by widening M2's threshold. Threshold stays genuinely low (~15%),
+a defensible idle cutoff, NOT 50%. At 15%: idle flagged, active not, periodic
+NOT flagged (intended, not a miss). Constraints: (C1) util series only, never
+cost; (C2) binary DetectionSignal, not a Finding; (C3) orphan = empty series,
+own branch, flagged via absence, basis="orphan-no-metrics", mean=None. config.py
+single threshold source, structured so M3 adds weekday/weekend params cleanly
+(don't build them now). GET /detections new; GET /findings frozen at M0 payload.
+Tests assert periodic NOT flagged with comment that M3 adds the scheduling path.
+
+## M2 — build prompt
+
+ratified — build it

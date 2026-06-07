@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.db import get_session, init_db
+from app.detect import DetectionSignal, detect
 from app.ingest import ingest_feeds
 from app.models import Finding
 from app.resources import ResourceView, get_resources
@@ -71,6 +72,12 @@ def ingest(
 def resources(session: Session = Depends(get_session)) -> list[ResourceView]:
     """Billing-primary LEFT join of cost rows + utilization series. Raw, no detection."""
     return get_resources(session)
+
+
+@app.get("/detections", response_model=list[DetectionSignal])
+def detections(session: Session = Depends(get_session)) -> list[DetectionSignal]:
+    """M2 baseline permanent-idle detection. Binary signals, not Findings."""
+    return detect(session)
 
 
 @app.get("/")
