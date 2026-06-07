@@ -31,3 +31,24 @@ Pydantic API-contract models separate from SQLite/SQLAlchemy ORM persistence mod
 do not combine API schema with an ORM row; note the intent now, don't build it yet.
 Build M0 (T1–T6) as planned. Commit at end. Report Elapsed Time and GET /findings
 sample payload.
+## M1 — planning prompt
+
+M0 accepted. GET /findings payload is the contract — do not change it this
+milestone. At end of each ratified milestone, commit + push to origin on the
+build branch, report SHA, do not push to main, ask first. Move to M1 (ingest +
+join) and ONLY M1; plan first, no code until "ratified — build it". RESEARCH
+FIRST: re-read app/models.py, files/DATA_FORMAT.md, both CSV headers; state the
+join key on each side and the orphan row. M1 acceptance: POST cur+utilization →
+DB holds BOTH feeds → GET /resources returns each resource with cost rows and
+(if present) joined utilization series; orphan volume appears with cost rows and
+NO metric series. Constraints: (1) two feeds = two tables, don't collapse util
+into a billing column; (2) LEFT join, billing-primary on resource_id, every
+billed resource appears, state what the orphan looks like post-join; (3) orphan
+survives the join, not dropped, not flagged yet; (4) SQLAlchemy ORM separate
+from Pydantic contracts; (5) name resource-id normalization as join-prep. OUT
+of scope: any detection/threshold/classification/confidence/weekday logic; GET
+/resources returns RAW joined data; do NOT modify hardcoded GET /findings.
+
+## M1 — build prompt
+
+ratified — build it
