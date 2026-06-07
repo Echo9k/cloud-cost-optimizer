@@ -9,57 +9,163 @@
     body { font: 15px/1.5 system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }
     h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
     .sub { opacity: 0.7; margin-top: 0; }
+
+    /* Honest-total banner */
+    .total { border: 1px solid #8884; border-radius: 12px; padding: 1rem 1.25rem; margin: 1.25rem 0; background: #1a7f3712; }
+    .total .amount { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .total .amount .unit { font-size: 1rem; font-weight: 600; opacity: 0.7; }
+    .total .note { font-size: 0.85rem; opacity: 0.75; margin-top: 0.15rem; }
+
     .card { border: 1px solid #8884; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
-    .row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .card.approved { border-color: #1a7f37aa; background: #1a7f370c; }
+    .row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
     .id { font-weight: 600; font-family: ui-monospace, monospace; }
     .type { opacity: 0.7; font-size: 0.85rem; }
-    .conf { font-weight: 600; }
-    .conf.high { color: #1a7f37; }
-    .conf.med  { color: #b88300; }
-    .conf.low  { color: #b34; }
-    .waste { font-variant-numeric: tabular-nums; font-weight: 600; }
-    .caveat { background: #8881; border-left: 3px solid #888; padding: 0.5rem 0.75rem; border-radius: 4px; margin: 0.75rem 0; }
-    .cmd { font-family: ui-monospace, monospace; background: #0001; padding: 0.6rem 0.75rem; border-radius: 6px; overflow-x: auto; }
-    .status { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+    .waste { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
+    .waste .unit { font-size: 0.8rem; font-weight: 600; opacity: 0.65; }
+
+    /* Confidence tier badge */
+    .badge { display: inline-block; font-size: 0.78rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; }
+    .conf.high { background: #1a7f3722; color: #1a7f37; }
+    .conf.caution { background: #b8830022; color: #b88300; }
+    .conf.low { background: #b3344422; color: #b34; }
+
+    /* Disposition pill */
+    .disp { display: inline-block; font-size: 0.8rem; font-weight: 600; margin: 0.5rem 0; padding: 0.15rem 0.55rem; border-radius: 6px; }
+    .disp.action { background: #b3344418; color: #b34; }
+    .disp.inuse  { background: #2563eb18; color: #2563eb; }
+
+    .reason { margin: 0.35rem 0; }
+    .caveat { background: #8881; border-left: 3px solid #888; padding: 0.5rem 0.75rem; border-radius: 4px; margin: 0.75rem 0; font-size: 0.92rem; }
+    .cmd { font-family: ui-monospace, monospace; font-size: 0.9rem; background: #0001; padding: 0.6rem 0.75rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+    .cmd.proposal { opacity: 0.7; }
+
+    .actions { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
+    button { font: inherit; font-weight: 600; padding: 0.4rem 0.9rem; border-radius: 7px; border: 1px solid #8886; background: #8881; cursor: pointer; }
+    button.approve { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+    button:disabled { cursor: default; opacity: 0.6; }
+    .runhint { font-size: 0.85rem; font-weight: 600; color: #1a7f37; }
+    .notapprovable { font-size: 0.85rem; opacity: 0.7; font-style: italic; }
+    .status { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; margin-top: 0.5rem; }
     .err { color: #b34; }
   </style>
 </head>
 <body>
   <h1>Cloud Cost Optimizer</h1>
-  <p class="sub">Detects idle / orphaned resources and <strong>proposes</strong> decommission commands. It never executes them.</p>
+  <p class="sub">Detects waste · <strong>proposes</strong> decommission commands · <strong>never executes them</strong>. You run the command in your own terminal — that copy-paste step is the confirmation layer.</p>
+
+  <div id="total"></div>
   <div id="findings">Loading…</div>
 
   <script>
-    function confClass(c) { return c >= 0.7 ? "high" : c >= 0.4 ? "med" : "low"; }
+    // approvable iff the proposed command is a real action (not a "# review" note).
+    // This mirrors the server's ACTIONABLE_BASES, derived from the existing contract.
+    const isActionable = (f) => !f.proposed_command.trim().startsWith("#");
 
-    function render(findings) {
-      const el = document.getElementById("findings");
-      if (!findings.length) { el.textContent = "No findings."; return; }
-      el.innerHTML = findings.map(f => `
-        <div class="card">
+    function confTier(c) {
+      if (c >= 0.7) return { cls: "high", label: "High confidence" };
+      if (c >= 0.4) return { cls: "caution", label: "Caution — low confidence" };
+      return { cls: "low", label: "Low confidence" };
+    }
+
+    function renderTotal(findings) {
+      const total = findings.reduce((s, f) => s + f.waste_estimate, 0);
+      document.getElementById("total").innerHTML = `
+        <div class="total">
+          <div class="amount">$${total.toFixed(2)} <span class="unit">/ mo claimed waste</span></div>
+          <div class="note">Honest total — the scheduling candidate contributes $0 by design. We don't claim savings on something we aren't recommending you delete.</div>
+        </div>`;
+    }
+
+    async function approve(resourceId, btn) {
+      btn.disabled = true; btn.textContent = "Approving…";
+      try {
+        const r = await fetch(`/findings/${encodeURIComponent(resourceId)}/approve`, { method: "POST" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        await load();  // re-fetch + re-render so status/badges reflect persisted state
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "Approve";
+        alert("Approve failed: " + e.message);
+      }
+    }
+
+    async function copyCmd(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        const old = btn.textContent; btn.textContent = "Copied ✓";
+        setTimeout(() => (btn.textContent = old), 1500);
+      } catch { btn.textContent = "Copy failed"; }
+    }
+
+    function card(f) {
+      const tier = confTier(f.confidence);
+      const actionable = isActionable(f);
+      const approved = f.status === "approved";
+
+      const disp = actionable
+        ? `<div class="disp action">Decommission proposed — turn this off</div>`
+        : `<div class="disp inuse">In use — scheduling opportunity, look closer</div>`;
+
+      let controls;
+      if (!actionable) {
+        controls = `<div class="notapprovable">Not a termination candidate — not approvable.</div>`;
+      } else if (approved) {
+        controls = `
+          <div class="runhint">✓ Approved — run this in your own terminal:</div>
+          <div class="actions">
+            <button class="copy" data-cmd="${encodeURIComponent(f.proposed_command)}">Copy command</button>
+          </div>`;
+      } else {
+        controls = `<div class="actions"><button class="approve" data-approve="${f.resource_id}">Approve</button></div>`;
+      }
+
+      return `
+        <div class="card ${approved ? "approved" : ""}">
           <div class="row">
             <div>
               <div class="id">${f.resource_id}</div>
               <div class="type">${f.resource_type}</div>
             </div>
             <div style="text-align:right">
-              <div class="waste">$${f.waste_estimate.toFixed(2)} <span class="type">claimed waste</span></div>
-              <div class="conf ${confClass(f.confidence)}">confidence ${f.confidence.toFixed(2)}</div>
+              <div class="waste">$${f.waste_estimate.toFixed(2)} <span class="unit">/ mo</span></div>
+              <span class="badge conf ${tier.cls}">${tier.label} · ${f.confidence.toFixed(2)}</span>
             </div>
           </div>
-          <p>${f.reason}</p>
+          ${disp}
+          <p class="reason">${f.reason}</p>
           <div class="caveat">⚠ ${f.caveat}</div>
-          <div class="cmd">${f.proposed_command}</div>
+          <div class="cmd ${approved || !actionable ? "" : "proposal"}">${f.proposed_command}</div>
+          ${controls}
           <div class="status">status: ${f.status}</div>
-        </div>
-      `).join("");
+        </div>`;
     }
 
-    fetch("/findings")
-      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(render)
-      .catch(e => { document.getElementById("findings").innerHTML =
-        `<p class="err">Failed to load findings: ${e.message}</p>`; });
+    function render(findings) {
+      renderTotal(findings);
+      const el = document.getElementById("findings");
+      if (!findings.length) { el.textContent = "No findings. POST the two CSV feeds to /ingest first."; return; }
+      // Defensive: sort by waste desc (API already does this).
+      findings.sort((a, b) => b.waste_estimate - a.waste_estimate);
+      el.innerHTML = findings.map(card).join("");
+
+      el.querySelectorAll("button.approve").forEach(b =>
+        b.addEventListener("click", () => approve(b.dataset.approve, b)));
+      el.querySelectorAll("button.copy").forEach(b =>
+        b.addEventListener("click", () => copyCmd(decodeURIComponent(b.dataset.cmd), b)));
+    }
+
+    async function load() {
+      try {
+        const r = await fetch("/findings");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        render(await r.json());
+      } catch (e) {
+        document.getElementById("findings").innerHTML =
+          `<p class="err">Failed to load findings: ${e.message}</p>`;
+      }
+    }
+
+    load();
   </script>
 </body>
 </html>

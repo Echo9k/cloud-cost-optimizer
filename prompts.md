@@ -116,3 +116,25 @@ and /detections unchanged. Research app/findings.py, orm.py, db.py first.
 ## M4 — build prompt
 
 ratified — build it.
+
+## M5 — planning prompt (dashboard / value surface)
+
+M4 accepted. Phase M5: dashboard / value surface. Plan first, no code until
+ratified. Standing constraints: thin client, API consumer only, no cloud
+identity, not Streamlit, pure consumer of GET /findings. M5 is "make the
+existing dashboard carry the demo." Acceptance: visual hierarchy is the
+deliverable — sorted by waste desc, colored/badged by confidence; idle high-conf
+terminate $29.95; scheduling low-conf no terminate $0; orphan high-cost low-conf
+"orphan or data gap"; viewer sees "turn this off" vs "in use, look closer";
+honest total $37.94/mo legible (scheduling $0 by design). Wire approve button to
+M4 endpoint; actionable finding shows command + Approve; approving flips to
+approved and command becomes copy-pasteable; scheduling not approvable, reflect
+in UI. Verification anchor: render/screenshot three findings sorted by waste,
+low-conf periodic, $37.94 total, approve->copy-paste on idle. OUT: un-approve/
+reject UI, auth/multi-user, charts beyond demo, new API endpoints, real cloud.
+Backend untouched, presentation only. Research dashboard/index.html + live
+/findings shape; confirm what's already rendered vs M5 additions.
+
+## M5 — build prompt
+
+ratified — build it.
