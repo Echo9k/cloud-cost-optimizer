@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cloud Cost Optimizer</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .sub { opacity: 0.7; margin-top: 0; }
+    .card { border: 1px solid #8884; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
+    .row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .id { font-weight: 600; font-family: ui-monospace, monospace; }
+    .type { opacity: 0.7; font-size: 0.85rem; }
+    .conf { font-weight: 600; }
+    .conf.high { color: #1a7f37; }
+    .conf.med  { color: #b88300; }
+    .conf.low  { color: #b34; }
+    .waste { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .caveat { background: #8881; border-left: 3px solid #888; padding: 0.5rem 0.75rem; border-radius: 4px; margin: 0.75rem 0; }
+    .cmd { font-family: ui-monospace, monospace; background: #0001; padding: 0.6rem 0.75rem; border-radius: 6px; overflow-x: auto; }
+    .status { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+    .err { color: #b34; }
+  </style>
+</head>
+<body>
+  <h1>Cloud Cost Optimizer</h1>
+  <p class="sub">Detects idle / orphaned resources and <strong>proposes</strong> decommission commands. It never executes them.</p>
+  <div id="findings">Loading…</div>
+
+  <script>
+    function confClass(c) { return c >= 0.7 ? "high" : c >= 0.4 ? "med" : "low"; }
+
+    function render(findings) {
+      const el = document.getElementById("findings");
+      if (!findings.length) { el.textContent = "No findings."; return; }
+      el.innerHTML = findings.map(f => `
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="id">${f.resource_id}</div>
+              <div class="type">${f.resource_type}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="waste">$${f.waste_estimate.toFixed(2)} <span class="type">claimed waste</span></div>
+              <div class="conf ${confClass(f.confidence)}">confidence ${f.confidence.toFixed(2)}</div>
+            </div>
+          </div>
+          <p>${f.reason}</p>
+          <div class="caveat">⚠ ${f.caveat}</div>
+          <div class="cmd">${f.proposed_command}</div>
+          <div class="status">status: ${f.status}</div>
+        </div>
+      `).join("");
+    }
+
+    fetch("/findings")
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(render)
+      .catch(e => { document.getElementById("findings").innerHTML =
+        `<p class="err">Failed to load findings: ${e.message}</p>`; });
+  </script>
+</body>
+</html>

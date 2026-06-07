@@ -1,0 +1,19 @@
+[project]
+name = "cloud-cost-optimizer"
+version = "0.1.0"
+description = "API-first FinOps tool: joins cost + utilization exports, flags idle/orphaned resources, proposes (never executes) decommission commands."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.111",
+    "uvicorn>=0.30",
+    "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
